@@ -1,0 +1,198 @@
+<app-sidebar></app-sidebar>
+
+<div class="dashboard-container">
+  <aside class="sidebar">
+    <div class="logo"><img src="../assets/image.png" alt="logo"></div>
+    <ul>
+      <li><a href="/admin-dashboard"><i class="bi bi-house"></i> Accueil</a></li>
+      <li class="dropdown">
+        <a href="#" class="dropdown-toggle" data-bs-toggle="collapse" data-bs-target="#userDropdown" aria-expanded="false"><i class="bi bi-person"></i>
+          Utilisateurs
+        </a>
+        <div class="collapse" id="userDropdown">
+          <a class="dropdown-item" href="/apprenant-crud" style="background-color: transparent;" onmouseover="this.style.backgroundColor='#005A8D';" onmouseout="this.style.backgroundColor='transparent';">
+            Cohortes
+          </a>
+          <a class="dropdown-item" href="/employee-crud" style="background-color: transparent;" onmouseover="this.style.backgroundColor='#005A8D';" onmouseout="this.style.backgroundColor='transparent';">
+            Départements
+          </a>
+        </div>
+      </li>
+      <li><a href="#"><i class="bi bi-building"></i> Structure</a></li>
+      <li><a href="#"><i class="bi bi-clock"></i> Pointages</a></li>
+    </ul>
+    <button class="logout"><i class="bi bi-box-arrow-right"></i> Déconnexion</button>
+  </aside>
+
+  <!-- le crud des apprenants-->
+  <div class="apprenant-crud-container">
+    <div class="search-container" style="text-align: right;">
+      <input type="text" class="search-input" placeholder="Rechercher un apprenant..." />
+      <i class="bi bi-search search-icon" (click)="onSearchClick()"></i>
+    </div>
+
+    <h3>Liste des apprenants</h3>
+    <div *ngIf="loading" class="loading">Chargement des apprenants...</div>
+
+    <table class="table table-striped" *ngIf="!loading">
+      <button class="btn-upload" (click)="uploadCsv()"><i class="bi bi-file-earmark-arrow-up"></i> Fichier CSV</button>
+      <input type="file" id="fileInput" accept=".csv" (change)="onFileSelected($event)" hidden />
+      <button class="btn-delete" [disabled]="!hasSelectedApprenants()" (click)="deleteSelectedApprenants()">Supprimer</button>
+      <button class="btn-block" [disabled]="!hasSelectedApprenants()" (click)="blockSelectedApprenants()">Bloquer</button>
+
+      <div class="crud-header">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th></th> <!-- Colonne pour les checkboxes sans nom -->
+              <th>Photo</th>
+              <th>Prénom et Nom</th>
+              <th>Email</th>
+              <th>Rôle</th>
+              <th>Matricule</th> <!-- Ajout de la colonne Matricule -->
+              <th>Statut</th> <!-- Ajout de la colonne Statut -->
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let apprenant of apprenants">
+              <td>
+                <input type="checkbox" [(ngModel)]="apprenant.selected" />
+              </td>
+              <td><img [src]="'http://127.0.0.1:8000/photos/' + apprenant.photo" alt="{{ apprenant.prenom }} {{ apprenant.nom }}" style="width: 50px; height: 50px; border-radius: 50%;"></td>
+              <td>{{ apprenant.prenom }} {{ apprenant.nom }}</td>
+              <td>{{ apprenant.email }}</td>
+              <td>{{ apprenant.role }}</td>
+              <td>{{ apprenant.matricule }}</td> <!-- Affichage du matricule de l'apprenant -->
+              <td [ngClass]="{'status-active': apprenant.status === 'active', 'status-blocked': apprenant.status === 'blocked'}">
+                {{ apprenant.status === 'active' ? 'Actif' : 'Bloqué' }}
+              </td>
+              <td>
+                <button class="btn btn-sm" (click)="editApprenant(apprenant)" style="background: none; border: none;"><i class="bi bi-pencil-square" style="color: #137C8B; font-size: 1.2rem;"></i></button>
+                <button class="btn btn-sm" (click)="viewApprenant(apprenant)" style="background: none; border: none;"><i class="bi bi-eye" style="color: #137C8B; font-size: 1.1rem;"></i></button>
+                <button class="btn btn-sm" (click)="blockApprenant(apprenant)" style="background: none; border: none;"><i class="bi bi-person-lock" style="color: #137C8B; font-size: 1.1rem;"></i></button>
+                <button class="btn btn-sm" (click)="deleteApprenant(apprenant)" style="background: none; border: none;"><i class="bi bi-trash-fill" style="color: #137C8B; font-size: 1.rem;"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </table>
+  </div>
+
+  <!-- Modal pour afficher les détails de l'apprenant -->
+  <div *ngIf="showModal" class="modal">
+    <div class="modal-content">
+      <span class="close" (click)="closeModal()">&times;</span>
+      <h2>Détails de l'apprenant</h2>
+      <div *ngIf="selectedApprenant">
+        <p><strong>Prénom et Nom:</strong> {{ selectedApprenant.prenom }} {{ selectedApprenant.nom }}</p>
+        <p><strong>Email:</strong> {{ selectedApprenant.email }}</p>
+        <p><strong>Fonction:</strong> {{ selectedApprenant.fonction }}</p>
+        <p><strong>Rôle:</strong> {{ selectedApprenant.role }}</p>
+        <p><strong>Matricule:</strong> {{ selectedApprenant.matricule }}</p>
+        <p><strong>Photo:</strong></p>
+        <img [src]="'http://127.0.0.1:8000/photos/' + selectedApprenant.photo" alt="{{ selectedApprenant.prenom }} {{ selectedApprenant.nom }}" style="width: 100px; height: 100px; border-radius: 50%;">
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmation pour supprimer un apprenant -->
+  <div *ngIf="showDeleteModal" class="modal">
+    <div class="modal-content">
+      <span class="close" (click)="closeDeleteModal()">&times;</span>
+      <h2>Confirmer la suppression</h2>
+      <p>Êtes-vous sûr de vouloir supprimer cet apprenant ?</p>
+      <div class="modal-buttons">
+        <button class="btn btn-primary" (click)="confirmDeleteApprenant()">Confirmer</button>
+        <button class="btn btn-secondary" (click)="closeDeleteModal()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmation pour bloquer un apprenant -->
+  <div *ngIf="showBlockModal" class="modal">
+    <div class="modal-content">
+      <span class="close" (click)="closeBlockModal()">&times;</span>
+      <h2>Confirmer le blocage</h2>
+      <p>Êtes-vous sûr de vouloir bloquer cet apprenant ?</p>
+      <div class="modal-buttons">
+        <button class="btn btn-primary" (click)="confirmBlockApprenant()">Confirmer</button>
+        <button class="btn btn-secondary" (click)="closeBlockModal()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de modification d'un apprenant -->
+  <div *ngIf="showEditModal" class="modal">
+    <div class="modal-content">
+      <span class="close" (click)="closeEditModal()">&times;</span>
+      <h2>Modifier l'apprenant</h2>
+      <form [formGroup]="editForm" (ngSubmit)="confirmEditApprenant()">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="nom">Nom</label>
+            <input type="text" id="nom" formControlName="nom" class="form-control">
+            <div *ngIf="editForm.get('nom')?.invalid && editForm.get('nom')?.touched" class="error">
+              Nom est requis.
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="prenom">Prénom</label>
+            <input type="text" id="prenom" formControlName="prenom" class="form-control">
+            <div *ngIf="editForm.get('prenom')?.invalid && editForm.get('prenom')?.touched" class="error">
+              Prénom est requis.
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" formControlName="email" class="form-control">
+            <div *ngIf="editForm.get('email')?.invalid && editForm.get('email')?.touched" class="error">
+              Email est requis et doit être valide.
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="telephone">Téléphone</label>
+            <input type="text" id="telephone" formControlName="telephone" class="form-control">
+            <div *ngIf="editForm.get('telephone')?.invalid && editForm.get('telephone')?.touched" class="error">
+              Téléphone est requis.
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="adresse">Adresse</label>
+            <input type="text" id="adresse" formControlName="adresse" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="photo">Photo</label>
+            <input type="file" id="photo" (change)="onFileSelected($event)" class="form-control">
+            <img [src]="photoPreview" alt="Aperçu de la photo" style="width: 100px; height: 100px; border-radius: 50%; margin-top: 10px;" *ngIf="photoPreview">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="role">Rôle</label>
+            <select id="role" formControlName="role" class="form-control">
+              <option value="apprenant">Apprenant</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="cohorte_id">Cohorte</label>
+            <select id="cohorte_id" formControlName="cohorte_id" class="form-control">
+              <option *ngFor="let cohorte of cohortes" [value]="cohorte._id">{{ cohorte.nom }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-buttons">
+          <button type="submit" class="btn btn-primary">Confirmer</button>
+          <button type="button" class="btn btn-secondary" (click)="closeEditModal()">Annuler</button>
+        </div>
+      </form>
+      <div *ngIf="errorMessage" class="error">{{ errorMessage }}</div>
+      <div *ngIf="successMessage" class="success">{{ successMessage }}</div>
+    </div>
+  </div>
+</div>
