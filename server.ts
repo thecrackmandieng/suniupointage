@@ -2,32 +2,33 @@ import { APP_BASE_HREF } from '@angular/common';
 import { CommonEngine } from '@angular/ssr';
 import express from 'express';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
 import bootstrap from './src/main.server';
 
-// The Express app is exported so that it can be used by serverless Functions.
 export function app(): express.Express {
   const server = express();
+
+  // Resolve paths
   const serverDistFolder = dirname(fileURLToPath(import.meta.url));
   const browserDistFolder = resolve(serverDistFolder, '../browser');
   const indexHtml = join(serverDistFolder, 'index.server.html');
-
+  
+  // Create the SSR engine instance
   const commonEngine = new CommonEngine();
 
+  // Set view engine and views path
   server.set('view engine', 'html');
   server.set('views', browserDistFolder);
 
-  // Example Express Rest API endpoints
-  // server.get('/api/**', (req, res) => { });
-  // Serve static files from /browser
-  server.get('**', express.static(browserDistFolder, {
-    maxAge: '1y',
-    index: 'index.html',
+  // Serve static files (Angular assets like JS, CSS, etc.)
+  server.get('*.*', express.static(browserDistFolder, {
+    maxAge: '1y',  // Cache static files for 1 year
+    index: false,  // Avoid using index.html here
   }));
 
-  // All regular routes use the Angular engine
+  // SSR route for Angular Universal rendering
   server.get('**', (req, res, next) => {
-    const { protocol, originalUrl, baseUrl, headers } = req;
+    const { protocol, originalUrl, headers, baseUrl } = req;
 
     commonEngine
       .render({
@@ -37,8 +38,8 @@ export function app(): express.Express {
         publicPath: browserDistFolder,
         providers: [{ provide: APP_BASE_HREF, useValue: baseUrl }],
       })
-      .then((html) => res.send(html))
-      .catch((err) => next(err));
+      .then((html) => res.send(html))  // Send the rendered HTML to the client
+      .catch((err) => next(err));  // Handle errors
   });
 
   return server;
@@ -47,7 +48,7 @@ export function app(): express.Express {
 function run(): void {
   const port = process.env['PORT'] || 4000;
 
-  // Start up the Node server
+  // Start the Node server
   const server = app();
   server.listen(port, () => {
     console.log(`Node Express server listening on http://localhost:${port}`);

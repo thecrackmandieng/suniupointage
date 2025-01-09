@@ -1,11 +1,12 @@
-import { mergeApplicationConfig, ApplicationConfig } from '@angular/core';
-import { provideServerRendering } from '@angular/platform-server';
-import { appConfig } from './app.config';
+import { NgModule } from '@angular/core';
+import { BrowserModule } from '@angular/platform-browser';
 
-const serverConfig: ApplicationConfig = {
-  providers: [
-    provideServerRendering()
-  ]
-};
 
-export const config = mergeApplicationConfig(appConfig, serverConfig);
+@NgModule({
+  imports: [
+    BrowserModule  // Ajouter SharedModule si nécessaire pour les composants partagés comme Sidebar
+    // Autres modules si nécessaire
+  ],
+  // Ne pas ajouter AppComponent ici car c'est un composant autonome
+})
+export class AppConfigModule {}

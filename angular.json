@@ -13,6 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
+            
             "outputPath": "dist/sunupointage",
             "index": "src/index.html",
             "browser": "src/main.ts",
@@ -20,12 +21,15 @@
               "zone.js"
             ],
             "tsConfig": "tsconfig.app.json",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
-            ],
+           "assets": [
+          
+            "src/assets",
+            { "glob": "**/*", "input": "public" }
+
+
+          ],
+
+           
             "styles": [
               "node_modules/bootstrap/dist/css/bootstrap.min.css",
               "src/styles.css",
@@ -67,6 +71,9 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json"  
+          },
           "configurations": {
             "production": {
               "buildTarget": "sunupointage:build:production"
