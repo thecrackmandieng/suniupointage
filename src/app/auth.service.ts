@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -54,12 +54,18 @@ export class AuthService {
   createUser(userData: any): Observable<any> {
     console.log('Données envoyées pour la création de l\'utilisateur :', userData);
 
-    return this.http.post(this.usersUrl, userData).pipe(
+    // Ajouter les en-têtes nécessaires (par exemple, Content-Type pour envoyer du JSON)
+    const headers = new HttpHeaders().set('Content-Type', 'application/json');
+
+    return this.http.post(this.usersUrl, userData, { headers }).pipe(
       catchError((error: HttpErrorResponse) => {
         console.error('Erreur lors de la création de l\'utilisateur :', error);
+        
+        // Gestion détaillée des erreurs renvoyées par le serveur
         if (error.error && error.error.errors) {
           console.error('Détails des erreurs :', error.error.errors);
         }
+
         return this.handleError('Erreur lors de la création de l\'utilisateur', error);
       })
     );

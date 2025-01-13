@@ -1,28 +1,17 @@
 /* Mise à jour des styles pour une interface plus claire et propre */
 
 .main-content {
-    margin-left: 340px; /* Décalage correspondant à la largeur de la sidebar */
-    padding: 10px;
-    width: calc(100% - 250px); /* Ajuste la largeur pour éviter le débordement */
-    background-color: #f9f9f9;
-    height: 80vh;
-    box-sizing: border-box;
-    margin-top: 0%;
-    width: 80%; /* Réduire la largeur totale à 80% de la page */
-    margin-top: 7%;
-
-  }
-  /* Mise à jour des styles pour une interface plus claire et propre */
-
-  .main-content {
-    margin-left: 100px; /* Décalage pour le contenu */
-    /* Conteneur principal avec CSS Grid */
-      padding: 200px; /* Retirer le padding interne */
-     
-     
-      
-
-  }
+  margin-left: 340px; /* Décalage correspondant à la largeur de la sidebar */
+  padding: 10px;
+  width: calc(100% - 250px); /* Ajuste la largeur pour éviter le débordement */
+  background-color: #f9f9f9;
+  height: 80vh;
+  box-sizing: border-box;
+  margin-top: 0%;
+  width: 80%; /* Réduire la largeur totale à 80% de la page */
+  margin-top: 7%;
+}
+  
   .filter-section {
     margin-bottom: 20px;
     display: flex;

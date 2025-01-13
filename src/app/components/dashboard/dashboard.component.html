@@ -60,16 +60,7 @@
           </div>
         </div>
   
-        <!-- Table des employés -->
-        <div *ngIf="errorMessage" class="alert alert-danger">
-          {{ errorMessage }}
-        </div>
-  
-        <div *ngIf="paginatedEmployees.length === 0 && !errorMessage" class="text-center">
-          <p>Aucun employé trouvé.</p>
-        </div>
-  
-        <div class="table-responsive" *ngIf="paginatedEmployees.length > 0">
+        <div class="table-responsive">
           <table class="table table-striped align-middle">
             <thead class="table">
               <tr>
@@ -98,53 +89,29 @@
                 <td>{{ employee.telephone }}</td>
                 <td>{{ employee.departement }}</td>
                 <td>{{ employee.email }}</td>
-                <td>{{ employee.created_at | date: 'short' }}</td>
+                <td>{{ employee.created_at }}</td>
               </tr>
             </tbody>
           </table>
         </div>
-  
-        <!-- Pagination -->
-        <div class="pagination justify-content-center">
-          <button
-            class="btn btn-primary"
-            (click)="changePage('prev')"
-            [disabled]="currentPage === 1"
-          >
-            Précédent
-          </button>
-          <span class="mx-2">{{ currentPage }} / {{ totalPages() }}</span>
-          <button
-            class="btn btn-primary"
-            (click)="changePage('next')"
-            [disabled]="currentPage === totalPages()"
-          >
-            Suivant
-          </button>
+        
+        <!-- Modal -->
+        <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="userModalLabel">Utilisateur détecté</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <!-- Détails utilisateur ou message d'erreur -->
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn btn-primary" (click)="acceptUser()">Accepter</button>
+                <button type="button" class="btn btn-danger" (click)="rejectUser()">Rejeter</button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>
-
-<!--   <button type="button" class="btn btn-primary" (click)="testModal()">Test Modal</button>
- -->
-
- <!-- Modal -->
-<div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="userModalLabel">Nom Prénom</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <!-- Photo, Nom, Prénom, et Heure seront insérés ici -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-primary" (click)="acceptUser()">Accepter</button>
-        <button type="button" class="btn btn-danger" (click)="rejectUser()">Rejeter</button>
-      </div>
-    </div>
-  </div>
-</div>
-
+        

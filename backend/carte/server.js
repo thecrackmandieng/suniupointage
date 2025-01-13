@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 
@@ -88,29 +88,99 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
+// Endpoint /register pour enregistrer un utilisateur
+app.post('/register', async (req, res) => {
+  const { nom, prenom, email, password, role, rfidUID } = req.body;
+
+  try {
+    // Hachage du mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Création de l'utilisateur
+    const newUser = new User({
+      nom,
+      prenom,
+      email,
+      password: hashedPassword,
+      role,
+      rfidUID
+    });
+
+    await newUser.save();
+    res.json({ message: 'Utilisateur enregistré avec succès' });
+  } catch (error) {
+    console.error('Erreur lors de l\'enregistrement:', error);
+    res.status(500).json({ message: 'Erreur serveur', error });
+  }
+});
+
+// Endpoint /login pour connecter un utilisateur avec email et mot de passe
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // Rechercher l'utilisateur dans la base de données
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Comparer les mots de passe
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Mot de passe incorrect' });
+    }
+
+    // Générer un token JWT
+    const token = jwt.sign(
+      { id: user._id, nom: user.nom, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+    user.api_token = token; // Stocker le token dans la base de données
+    await user.save();
+
+    // Répondre avec le token et le rôle
+    res.json({ message: 'Connexion réussie', api_token: token, role: user.role });
+  } catch (error) {
+    console.error('Erreur lors de la connexion:', error);
+    res.status(500).json({ message: 'Erreur serveur', error });
+  }
+});
+
+// Connexion avec carte RFID (via /events)
+app.post('/events', async (req, res) => {
+  const { rfidUID } = req.body;
+  try {
+    const user = await User.findOne({ rfidUID });
+    if (!user) {
+      return res.status(404).json({ message: 'Carte RFID non reconnue' });
+    }
+
+    // Générer un token JWT
+    const token = jwt.sign({ id: user._id, nom: user.nom, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    user.api_token = token;
+    await user.save();
+
+    res.json({ message: 'Connexion via RFID réussie', api_token: token, role: user.role });
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur', error });
+  }
+});
+
+// Endpoint pour ajouter un pointage (enregistrement du temps de passage)
 parser.on('data', async (data) => {
   const rawUID = data.trim();
   const uid = rawUID.replace(/^Carte détectée :\s*/, '').toUpperCase();
-
-  console.log(`UID nettoyé reçu : ${uid}`);
+  console.log(`UID reçu : ${uid}`);
 
   try {
     const user = await User.findOne({ rfidUID: uid });
     const now = new Date();
-    const date = now.toISOString().split('T')[0]; // Date actuelle (format YYYY-MM-DD)
-    const time = now.toTimeString().split(' ')[0]; // Heure actuelle (format HH:mm:ss)
+    const date = now.toISOString().split('T')[0]; // Date actuelle (YYYY-MM-DD)
+    const time = now.toTimeString().split(' ')[0]; // Heure actuelle (HH:mm:ss)
 
     if (user) {
       console.log(`Accès autorisé pour : ${user.nom} ${user.prenom}`);
-
-      // Création du token JWT
-      const token = jwt.sign(
-        { id: user._id, nom: user.nom, role: user.role },
-        process.env.JWT_SECRET,
-        { expiresIn: '1h' }
-      );
-      user.api_token = token;
-      await user.save();
 
       // Vérification s'il existe déjà un pointage pour cet utilisateur et cette date
       const existingPointage = await Pointage.findOne({ userId: user._id, date });
@@ -118,15 +188,8 @@ parser.on('data', async (data) => {
       if (existingPointage) {
         existingPointage.secondTime = time;
         await existingPointage.save();
-
         console.log('Deuxième pointage enregistré :', existingPointage);
-        io.emit('rfid', {
-          status: 'AUTHORIZED',
-          uid,
-          token,
-          user,
-          pointage: existingPointage,
-        });
+        io.emit('rfid', { status: 'AUTHORIZED', uid, token: user.api_token, user, pointage: existingPointage });
       } else {
         const newPointage = new Pointage({
           userId: user._id,
@@ -138,90 +201,16 @@ parser.on('data', async (data) => {
           firstTime: time,
         });
         await newPointage.save();
-
         console.log('Premier pointage enregistré :', newPointage);
-        io.emit('rfid', {
-          status: 'AUTHORIZED',
-          uid,
-          token,
-          user,
-          pointage: newPointage,
-        });
+        io.emit('rfid', { status: 'AUTHORIZED', uid, token: user.api_token, user, pointage: newPointage });
       }
     } else {
       console.log('Accès refusé : UID non reconnu');
-      
-      // Suppression de l'enregistrement dans la base de données
       io.emit('rfid', { status: 'DENIED', uid });
     }
   } catch (error) {
     console.error('Erreur lors de la vérification de l\'UID:', error);
     io.emit('rfid', { status: 'ERROR', message: 'Erreur serveur' });
-  }
-});
-
-// Endpoint /login
-app.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
-    }
-    if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(401).json({ message: 'Mot de passe incorrect' });
-    }
-
-    const token = jwt.sign({ id: user._id, nom: user.nom, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    user.api_token = token;
-    await user.save();
-    
-    res.json({ message: 'Connexion réussie', api_token: token, role: user.role });
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur', error });
-  }
-});
-
-// Endpoint /events pour connexion RFID
-app.post('/events', async (req, res) => {
-  const { rfidUID } = req.body;
-  try {
-    const user = await User.findOne({ rfidUID });
-    if (!user) {
-      return res.status(404).json({ message: 'Carte RFID non reconnue' });
-    }
-
-    const token = jwt.sign({ id: user._id, nom: user.nom, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    user.api_token = token;
-    await user.save();
-
-    res.json({ message: 'Connexion via RFID réussie', api_token: token, role: user.role });
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur serveur', error });
-  }
-});
-// Endpoint /admin pour récupérer les utilisateurs
-app.get('/admin/users', verifyToken, isAdmin, async (req, res) => {
-  try {
-    const users = await User.find();
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ message: 'Erreur lors de la récupération des utilisateurs', error });
-  }
-});
-// Simuler le contrôle du servomoteur
-app.post('/api/servo/set-angle', (req, res) => {
-  const { angle } = req.body;
-
-  if (angle === 90) {
-    console.log('Servo déplacé à 90°');
-    res.send({ message: 'Servo déplacé à 90°' });
-  } else if (angle === 0) {
-    console.log('Servo déplacé à 0°');
-    res.send({ message: 'Servo déplacé à 0°' });
-  } else {
-    console.log('Commande inconnue reçue :', angle);
-    res.status(400).send({ error: 'Commande inconnue reçue' });
   }
 });
 

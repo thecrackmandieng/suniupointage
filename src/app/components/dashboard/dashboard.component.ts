@@ -7,7 +7,6 @@ import { RFIDService } from '../../rfid.service';
 import { Router } from '@angular/router'; // Router service
 import { ServoService } from '../../servo.service'; // Importer le service ServoService
 
-
 declare var bootstrap: any; // Déclaration globale pour Bootstrap
 
 @Component({
@@ -23,7 +22,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   filteredEmployees: any[] = [];
   paginatedEmployees: any[] = [];
   errorMessage: string | null = null; // Message d'erreur pour la carte invalide
-
 
   searchQuery: string = ''; // Recherche par téléphone
   selectedDepartment: string = ''; // Filtrage par département
@@ -41,7 +39,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   cardDetected: boolean = false; // Indicateur de détection de carte
   rfidData: any = null;
 
-
   currentDateTime: string = ''; // Date et heure en temps réel
 
   constructor(
@@ -49,7 +46,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private rfidService: RFIDService,
     private servoService: ServoService,
     private router: Router // Injection du router service
-    
   ) {}
 
   ngOnInit(): void {
@@ -60,6 +56,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     // Mise à jour automatique de la date et l'heure toutes les secondes
     this.detectionInterval = setInterval(() => {
       this.updateDateTime();
+      this.updateEmployeesDateTime(); // Mise à jour de l'heure pour chaque employé
     }, 1000);
   }
 
@@ -83,20 +80,29 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  /* toggleSidebar() {
-    this.isSidebarOpen = !this.isSidebarOpen;
-  } */
-    toggleSidebar(): void {
-      this.isSidebarOpen = !this.isSidebarOpen;
-    
-      const angle = this.isSidebarOpen ? 90 : 0; // Angle basé sur l'état de la sidebar
-    
-      this.servoService.setServoAngle(angle).subscribe({
-        next: () => console.log(`Commande envoyée : Servo à ${angle}°`),
-        error: (err: any) => console.error('Erreur lors de l\'envoi de la commande:', err),
+  updateEmployeesDateTime(): void {
+    this.employees.forEach((employee) => {
+      employee.created_at = new Date().toLocaleString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
       });
-    }
-    
+    });
+  }
+
+  toggleSidebar(): void {
+    this.isSidebarOpen = !this.isSidebarOpen;
+
+    const angle = this.isSidebarOpen ? 90 : 0; // Angle basé sur l'état de la sidebar
+
+    this.servoService.setServoAngle(angle).subscribe({
+      next: () => console.log(`Commande envoyée : Servo à ${angle}°`),
+      error: (err: any) => console.error('Erreur lors de l\'envoi de la commande:', err),
+    });
+  }
+
   logout() {
     localStorage.removeItem('token');
     window.location.href = '/login';
@@ -125,8 +131,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.paginateEmployees();
       },
       error: (err) => {
-        this.errorMessage =
-          'Une erreur est survenue lors du chargement des données.';
+        this.errorMessage = 'Une erreur est survenue lors du chargement des données.';
         console.error(err);
       },
     });
@@ -135,13 +140,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   listenForRFID() {
     this.rfidService.getRFIDStatus().subscribe((data: any) => {
       console.log('Données reçues de la carte RFID:', data);
-  
+
       if (data && data.user && data.user.nom) {
         this.detectedCardInfo = data;  // Stocke les informations dans une variable
         this.selectedUser = this.employees.find(
           (employee) => employee.nom === data.user.nom
         );
-  
+
         // Si un utilisateur est trouvé, affiche le modal
         if (this.selectedUser) {
           this.errorMessage = null;  // Réinitialise le message d'erreur
@@ -158,23 +163,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
     });
   }
-  
+
   showModal() {
     const modalElement = document.getElementById('userModal');
     if (!modalElement) {
       console.error('Le modal n\'existe pas dans le DOM.');
       return;
     }
-  
+
     const modalTitle = modalElement.querySelector('.modal-title');
     const modalBody = modalElement.querySelector('.modal-body');
-  
+
     if (this.selectedUser) {
       // Si l'utilisateur est valide, affiche les informations utilisateur
       if (modalTitle) {
         modalTitle.textContent = `${this.selectedUser.prenom} ${this.selectedUser.nom}`;
       }
-  
+
       if (modalBody) {
         modalBody.innerHTML = `
           <div class="text-center">
@@ -190,7 +195,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (modalTitle) {
         modalTitle.textContent = 'Erreur de carte';
       }
-  
+
       if (modalBody) {
         modalBody.innerHTML = `
           <div class="text-center">
@@ -199,18 +204,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
         `;
       }
     }
-  
+
     // Créer une instance du modal Bootstrap et l'ouvrir
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
   }
-  
-  
-
- /*  testModal() {
-    console.log('Test Modal clicked');
-    this.showModal();
-  } */
 
   acceptUser() {
     if (this.selectedUser) {
@@ -222,26 +220,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       modal.hide(); // Fermer le modal après l'action
     }
   }
-  savePointage(): void {
-    if (this.rfidData) {
-      const time = new Date().toISOString();
-      const userId = this.detectedCardInfo?.user?.userId;
-if (!userId) {
-  console.error('Aucun userId trouvé dans les données détectées.');
-  return;
-}
 
-
-
-      this.rfidService.savePointage(userId, this.rfidData.rfidUID, status, time).subscribe({
-        next: (response) => {
-          console.log('Pointage enregistré :', response);
-          alert('Pointage enregistré avec succès.');
-        },
-        error: (err) => console.error('Erreur lors de l\'enregistrement du pointage :', err),
-      });
-    }
-  }
   rejectUser() {
     alert('Utilisateur rejeté : ' + this.selectedUser?.prenom);
     this.selectedUser = null;
